@@ -161,3 +161,12 @@ cython_debug/
 
 # VSCode
 .vscode/
+
+# Terraform
+.terraform/
+.terraform.lock.hcl
+plan
+*terraform.tfstate*
+
+# Icloud
+*.icloud
