@@ -1,10 +1,20 @@
 terraform {
+  backend "s3" {
+    bucket = "fastapi-state"
+    key    = "stage/services/webserver-cluster/terraform.tfstate"
+    region = "eu-west-2"
+
+    dynamodb_table = "fastapi-locks"
+    encrypt        = true
+  }
+
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 4.16"
     }
   }
+
   required_version = ">= 1.2.0"
 }
 
@@ -12,53 +22,36 @@ provider "aws" {
   region = "us-east-2"
 }
 
-resource "aws_instance" "instance" {
-  ami                    = "ami-0c55b159cbfafe1f0"
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.instance.id]
+resource "aws_launch_configuration" "example" {
+  image_id        = "ami-0c55b159cbfafe1f0"
+  instance_type   = "t2.micro"
+  security_groups = [aws_security_group.instance.id]
+  user_data       = data.template_file.user_data
 
-  user_data = <<-EOF
-  #!/bin/bash
-  echo "Hello, World" > index.html
-  nohup busybox httpd -f -p ${var.server_port} &
-  EOF
+  lifecycle {
+    create_before_destroy = true
+  }
+}
 
-  tags = {
-    Name = "terraform-example"
+data "template_file" "user_data" {
+  template = file("user-data.sh")
+
+  vars = {
+    server_port = var.server_port
+    db_address  = data.terraform_remote_state.db.outputs.address
+    db_port     = data.terraform_remote_state.db.outputs.port
   }
 }
 
 resource "aws_security_group" "instance" {
   name = "terraform-example-instance"
+
   ingress {
-    from_port   = var.server_port
-    to_port     = var.server_port
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
-
-variable "server_port" {
-  description = "The port the server will use for HTTP requests"
-  type        = number
-  default     = 8080
-}
-
-output "public_ip" {
-  value       = aws_instance.instance.public_ip
-  description = "The public IP address of the web server"
-}
-
-resource "aws_launch_configuration" "example" {
-  image_id        = "ami-0c55b159cbfafe1f0"
-  instance_type   = "t2.micro"
-  security_groups = [aws_security_group.instance.id]
-
-  user_data = <<-EOF
-  #!/bin/bash
-  echo "Hello, World" > index.html
-  nohup busybox httpd -f -p ${var.server_port} &
-  EOF
 }
 
 resource "aws_autoscaling_group" "example" {
@@ -167,7 +160,12 @@ resource "aws_lb_listener_rule" "asg" {
   }
 }
 
-output "alb_dns_name" {
-  value       = aws_lb.example.dns_name
-  description = "The domain name of the load balancer"
+data "terraform_remote_state" "db" {
+  backend = "s3"
+
+  config = {
+    bucket = "fastapi-state"
+    key    = "stage/data-stores/mysql/terraform.tfstate"
+    region = "eu-west-2"
+  }
 }
