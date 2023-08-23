@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket = "fastapi-state"
-    key    = "stage/data-stores/mysql/terraform.tfstate"
+    key    = "prod/data-stores/mysql/terraform.tfstate"
     region = "eu-west-2"
 
     dynamodb_table = "fastapi-locks"
@@ -22,5 +22,5 @@ provider "aws" {
 
 module "mysql" {
   source = "../../../modules/data-stores/mysql"
-  name   = "mysql-stage"
+  name   = "mysql-prod"
 }
