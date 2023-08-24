@@ -23,7 +23,7 @@ provider "aws" {
 }
 
 module "webserver_cluster" {
-  source = "../../../modules/services/webserver-cluster"
+  source = "github.com/WilliamHoltam/fastapi_tf_modules//services//webserver-cluster?ref=v0.0.1"
 
   cluster_name           = "webservers-prod"
   db_remote_state_bucket = "fastapi-state"

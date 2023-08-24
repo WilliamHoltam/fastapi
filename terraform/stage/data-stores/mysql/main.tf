@@ -21,6 +21,6 @@ provider "aws" {
 }
 
 module "mysql" {
-  source = "../../../modules/data-stores/mysql"
+  source = "github.com/WilliamHoltam/fastapi_tf_modules//data-stores//mysql?ref=v0.0.1"
   name   = "mysql-stage"
 }
